@@ -51,7 +51,26 @@ public:
     }
 
     void erase(std::string& word) {
+        Node<char>* node = root;
+        char lastLetter;
+        Node<char>* parent = nullptr;
+        for (char letter : word) {
+            for (auto& [letterInMap, childOfLetter] : node->children) {
+                if (node->children.count(letter)) {
+                    parent = node;
+                    node = node->children.at(letter);
+                    lastLetter = letter;
+                } else {
+                    std::cerr << "Trying to erase a non-existent word!\n";
+                    return;
+                }
+            }
+        }
 
+        if (node->isWord && node->children.empty()) { // es palabra y está vacío
+            delete node;
+            parent->children.at(lastLetter) = nullptr;
+        }
     }
 
     bool searchPrefix(const std::string& prefix) {
@@ -100,13 +119,37 @@ public:
                 node = node->children.at(letter); // sigue buscando
             } else { // si no se encontró
                 node->children.insert(std::pair<char, Node<char>*>(letter, new Node<char>())); // insert the letter and its child
-                node = node->children.at(letter); // set the map to look in to the new child's map
+                node = node->children.at(letter); // set the node to look in to the newly created node
             }
         }
-        node->isWord = true;
+        node->isWord = true; // last inserted node needs to be marked as a word
     }
 
-    ~Trie() = default; // TODO: free memory
+    ~Trie() {
+        std::queue<Node<char>*> q;
+
+        if (root)
+            q.push(root);
+        else
+            return;
+
+        while (!q.empty()) {
+            unsigned nodos = q.size();
+
+            while (nodos > 0) {
+                Node<char>* n = q.front();
+
+                for (auto& [letter, child] : n->children)
+                    if (child)
+                        q.push(child);
+
+                q.pop();
+                delete n;
+                --nodos;
+            }
+
+        }
+    }
 };
 
 #endif //TRIE_TRIE_H

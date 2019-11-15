@@ -27,6 +27,9 @@ public:
         os << "Node -> " << "Is Word -> " << n->isWord << " First Child -> " << n->children.begin()->first;
         return os;
     }
+    ~Node() {
+        std::cout << "Node deleted\n";
+    }
 };
 
 template <>
