@@ -5,6 +5,7 @@
 #ifndef TRIE_TRIE_H
 #define TRIE_TRIE_H
 
+#include <queue>
 #include "Node.h"
 
 template <typename T>
@@ -12,38 +13,75 @@ class Trie {};
 
 template <>
 class Trie<std::string> {
+public:
     Node<char>* root;
 
 public:
-    Trie(): root{nullptr} {}
+    Trie(): root{new Node<char>()} {}
 
     void print() {
-        // TODO
-    }
+        std::queue<Node<char>*> q;
 
-    bool searchWithPrefix(const std::string& prefix) {
-        // TODO
-        return false;
+        if (root)
+            q.push(root);
+        else
+            return;
+
+        while (!q.empty()) {
+            unsigned nodos = q.size();
+
+            while (nodos > 0) {
+                Node<char>* n = q.front();
+
+                for (auto& [letter, child] : n->children) {
+                    std::cout << letter << " ";
+                    if (child) {
+                        q.push(child);
+                    }
+                }
+
+                q.pop();
+
+                --nodos;
+            }
+            std::cout << std::endl;
+
+        }
+
     }
 
     void erase(std::string& word) {
-        // TODO
+
     }
 
-    bool search(const std::string& s) {
+    bool searchPrefix(const std::string& prefix) {
+        std::map<char, Node<char>*> mapToLookIn = root->children;
+        Node<char>* childAux;
+        unsigned size = prefix.size();
+        unsigned verifier = 0;
+        for (unsigned i = 0; i < size; ++i) {
+            for (auto& [letter, child] : mapToLookIn)  {
+                childAux = child; // es posible que child sea nullptr?
+                if (letter == prefix[i]) {
+                    ++verifier;
+                    mapToLookIn = child->children;
+                }
+            }
+        }
+        return verifier == size && !childAux->isWord;
+    }
+
+    bool searchWord(const std::string& s) {
         std::map<char, Node<char>*> mapToLookIn = root->children;
         Node<char>* childAux;
         unsigned size = s.size();
         unsigned verifier = 0;
-        for (unsigned i = 0; i < size; ++i)
+        for (char l : s)
         {
             for (auto& [letter, child] : mapToLookIn)
             {
                 childAux = child;
-//                std::cout << "Comparing " << letter << " to " << s[i] << std::endl;
-//                if (i == size-1 && child->isWord)
-//                    std::cout << "Last letter's child has isWord set to true." << std::endl;
-                if (s[i] == letter) {
+                if (l == letter) {
                     ++verifier;
                     mapToLookIn = child->children;
                     continue;
@@ -52,99 +90,20 @@ public:
                 }
             }
         }
-//        std::cout << "Verifier: " << verifier << std::endl;
-//        std::cout << "Size: " << size << std::endl;
         return verifier == size && childAux->isWord;
     }
 
-    void insert(const std::string& word, const unsigned& wordSize) {
-        if (root) {
-            if (wordSize > 1) {
-                Node<char>* childOfLetter;
-                std::map<char, Node<char>*> mapToLookIn = root->children;
-                bool dontEnterTheInnerLoop = false;
-
-                for (unsigned i = 0; i < wordSize; ++i)
-                {
-                    bool letterFound = false;
-                    if (!dontEnterTheInnerLoop)
-                    {
-                        RestartLoop:
-                        for (auto& [letter, childOfLetter] : mapToLookIn)
-                        {
-                            if (letter == word[i])
-                            {
-                                letterFound = true;
-                                if (i == wordSize-1 && childOfLetter)
-                                {
-                                    childOfLetter->isWord = true;
-                                    return;
-                                }
-                                else if (i == wordSize-1 && !childOfLetter)
-                                {
-                                    childOfLetter = new Node<char>(' ', nullptr, true);
-                                }
-                                else if (i != wordSize-1 && childOfLetter)
-                                {
-                                    mapToLookIn = childOfLetter->children;
-                                }
-                                else if (i != wordSize-1 && !childOfLetter)
-                                {
-                                    dontEnterTheInnerLoop = true;
-                                    childOfLetter = new Node<char>();
-                                }
-
-                            }
-                        }
-                    }
-
-                    if (!letterFound)
-                    {
-                        auto* node = new Node<char>();
-                        mapToLookIn.insert(std::pair<char, Node<char>*>(word[i], nullptr));
-                        goto RestartLoop;
-                    }
-
-                    if (dontEnterTheInnerLoop)
-                    {
-                        if (i == wordSize-1)
-                        {
-                            childOfLetter = new Node<char>(' ', nullptr, true);
-                        }
-                        else
-                        {
-                            auto* node = new Node<char>();
-                            childOfLetter->children.insert(std::pair<char, Node<char>*>(word[i+1], node));
-                            childOfLetter = childOfLetter->children.begin()->second;
-                        }
-                    }
-                }
-
-            } else {
-                for (auto& [letter, childOfLetter] : root->children) {
-                    if (letter == word[0]) { // encontró la letra
-                        childOfLetter = new Node<char>(' ', nullptr, true);
-                        return;
-                    }
-                }
-                // no encontró la letra
-                auto* node = new Node<char>(' ', nullptr, true);
-                root->children.insert(std::pair<char, Node<char>*>(word[0], node));
-            }
-        } else {
-            if (wordSize > 1) {
-                auto* node = new Node<char>(word[1], nullptr, false);
-                root = new Node<char>(word[0], node, false);
-                for (unsigned i = 2; i < wordSize; ++i) {
-                    node->children.begin()->second = new Node<char>(word[i], nullptr, false);
-                    node = node->children.begin()->second;
-                }
-                node->children.begin()->second = new Node<char>(' ', nullptr, true);
-            } else {
-                auto* node = new Node<char>(' ', nullptr, true);
-                root = new Node<char>(word[0], node, false);
+    void insert(const std::string& word) {
+        Node<char>* node = root;
+        for (char letter : word) {
+            if (node->children.count(letter)) { // si se encontró la letra
+                node = node->children.at(letter); // sigue buscando
+            } else { // si no se encontró
+                node->children.insert(std::pair<char, Node<char>*>(letter, new Node<char>())); // insert the letter and its child
+                node = node->children.at(letter); // set the map to look in to the new child's map
             }
         }
+        node->isWord = true;
     }
 
     ~Trie() = default; // TODO: free memory
